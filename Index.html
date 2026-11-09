@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MACA Dice Predictor PRO</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            red: '#ef4444',
+                            green: '#22c55e',
+                            blue: '#3b82f6',
+                            yellow: '#eab308',
+                            orange: '#f97316',
+                            purple: '#a855f7'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f17;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+        
+        #live-bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .glass-card {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .cube-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .cube-btn:hover {
+            transform: scale(1.08);
+            filter: brightness(1.2);
+        }
+        
+        .cube-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Color classes */
+        .bg-dice-red { background-color: #ef4444; box-shadow: 0 0 12px rgba(239, 68, 68, 0.4); }
+        .bg-dice-green { background-color: #22c55e; box-shadow: 0 0 12px rgba(34, 197, 94, 0.4); }
+        .bg-dice-blue { background-color: #3b82f6; box-shadow: 0 0 12px rgba(59, 130, 246, 0.4); }
+        .bg-dice-yellow { background-color: #eab308; box-shadow: 0 0 12px rgba(234, 179, 8, 0.4); }
+        .bg-dice-orange { background-color: #f97316; box-shadow: 0 0 12px rgba(249, 115, 22, 0.4); }
+        .bg-dice-purple { background-color: #a855f7; box-shadow: 0 0 12px rgba(168, 85, 247, 0.4); }
+        
+        .text-dice-red { color: #ef4444; }
+        .text-dice-green { color: #22c55e; }
+        .text-dice-blue { color: #3b82f6; }
+        .text-dice-yellow { color: #eab308; }
+        .text-dice-orange { color: #f97316; }
+        .text-dice-purple { color: #a855f7; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between relative selection:bg-indigo-500 selection:text-white">
+
+    <!-- Live Animated Canvas Background -->
+    <canvas id="live-bg-canvas"></canvas>
+
+    <div class="relative z-10 max-w-5xl mx-auto w-full px-4 py-6 flex flex-col gap-6">
+
+        <!-- Top Header Navigation -->
+        <header class="glass-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 shadow-2xl">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-dice-d20 text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-tight text-white flex items-center gap-2">
+                        MACA PREDICTOR
+                    </h1>
+                    <p class="text-xs text-gray-400">AI Neural Pattern Recognition & Stats</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button id="bgm-btn" onclick="toggleBGM()" class="px-3 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-xs font-semibold flex items-center gap-2 transition border border-indigo-500/30">
+                    <i id="bgm-icon" class="fa-solid fa-music"></i>
+                    <span id="bgm-text">Music OFF</span>
+                </button>
+                <button id="sound-btn" onclick="toggleAudio()" class="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold flex items-center gap-2 transition border border-gray-700">
+                    <i id="sound-icon" class="fa-solid fa-volume-high text-indigo-400"></i>
+                    <span id="sound-text">SFX ON</span>
+                </button>
+                <button onclick="resetMatrix()" class="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold flex items-center gap-2 transition border border-rose-500/20">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Reset All</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Panel: Scanner & Analysis Trigger -->
+        <div class="lg:col-span-5 flex flex-col gap-6">
+            
+            <!-- Upload Dropzone -->
+            <div class="glass-card rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-bold text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-camera text-indigo-400"></i>
+                        Screenshot Scan (MACA)
+                    </h2>
+                    <span class="text-[10px] px-2 py-0.5 rounded bg-gray-800 text-gray-400">Ctrl + V</span>
+                </div>
+
+                <div id="drop-zone" onclick="document.getElementById('file-input').click()" class="border-2 border-dashed border-gray-700 hover:border-indigo-500 rounded-xl p-6 text-center cursor-pointer transition bg-gray-900/40 hover:bg-gray-900/70 flex flex-col items-center justify-center gap-3 group relative overflow-hidden">
+                    <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+                    
+                    <div id="upload-placeholder" class="flex flex-col items-center gap-2">
+                        <div class="w-12 h-12 rounded-full bg-indigo-500/10 group-hover:bg-indigo-500/20 text-indigo-400 flex items-center justify-center transition">
+                            <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                        </div>
+                        <p class="text-xs font-semibold text-gray-300">Click or Drag & Drop Screenshot</p>
+                        <p class="text-[11px] text-gray-500">Auto-calculation of optimal color</p>
+                    </div>
+
+                    <img id="image-preview" class="hidden max-h-48 rounded-lg object-contain border border-gray-700 shadow-md">
+                </div>
+
+                <!-- Analysis Progress Bar & Scanning Info -->
+                <div id="scan-status" class="hidden p-4 rounded-xl bg-gray-900/80 border border-indigo-500/30 flex flex-col gap-2">
+                    <div class="flex items-center justify-between text-xs font-bold">
+                        <span id="scan-status-text" class="text-indigo-400 flex items-center gap-2">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Scanning 7 sec...
+                        </span>
+                        <span id="scan-percent-text" class="text-white">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden">
+                        <div id="scan-progress-bar" class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Panel: Result & Probabilities -->
+        <div class="lg:col-span-7 flex flex-col gap-6">
+
+            <!-- Primary Prediction Result Banner -->
+            <div class="glass-card rounded-2xl p-6 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 border-l-4 border-l-indigo-500">
+                <div class="flex flex-col gap-1 text-center md:text-left">
+                    <span class="text-xs font-extrabold uppercase tracking-widest text-indigo-400">Predicted Best Color</span>
+                    <h2 id="top-color-name" class="text-3xl font-black tracking-tight capitalize text-white">Waiting...</h2>
+                    <p class="text-xs text-gray-400">Deep neural screenshot analysis result</p>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <div id="top-color-cube" class="w-20 h-20 rounded-2xl bg-gray-800 flex items-center justify-center text-white text-3xl font-black shadow-2xl transition-all duration-300">
+                        ?
+                    </div>
+                    <div class="flex flex-col items-start">
+                        <span id="top-color-percent" class="text-3xl font-black text-white">0.0%</span>
+                        <span class="text-[11px] text-gray-400 font-semibold">Probability</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Full Color Leaderboard -->
+            <div class="glass-card rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-bold text-gray-200 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-chart-simple text-indigo-400"></i>
+                        Color Ranking
+                    </h2>
+                    <span class="text-xs text-gray-400">6 Color Spectrum</span>
+                </div>
+
+                <div id="leaderboard-container" class="flex flex-col gap-3">
+                    <!-- Leaderboard rendered by JS -->
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Application Engine Script -->
+    <script>
+        const ALL_COLORS = ['red', 'green', 'blue', 'yellow', 'orange', 'purple'];
+        const COLOR_NAMES_EN = {
+            red: 'Red',
+            green: 'Green',
+            blue: 'Blue',
+            yellow: 'Yellow',
+            orange: 'Orange',
+            purple: 'Purple'
+        };
+
+        let colorWeights = { red: 10, green: 10, blue: 10, yellow: 10, orange: 10, purple: 10 };
+        let isScanning = false;
+        let soundEnabled = true;
+        let bgmPlaying = false;
+        let audioCtx = null;
+        let bgmInterval = null;
+
+        function playTone(freq, duration = 0.15) {
+            if (!soundEnabled) return;
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {}
+        }
+
+        function toggleBGM() {
+            bgmPlaying = !bgmPlaying;
+            const btnText = document.getElementById('bgm-text');
+            const btnIcon = document.getElementById('bgm-icon');
+
+            if (bgmPlaying) {
+                if (btnText) btnText.innerText = 'Music ON';
+                if (btnIcon) btnIcon.className = 'fa-solid fa-compact-disc fa-spin text-emerald-400';
+                startAmbientMusic();
+            } else {
+                if (btnText) btnText.innerText = 'Music OFF';
+                if (btnIcon) btnIcon.className = 'fa-solid fa-music text-indigo-400';
+                stopAmbientMusic();
+            }
+        }
+
+        function startAmbientMusic() {
+            if (bgmInterval) clearInterval(bgmInterval);
+            const notes = [261.63, 329.63, 392.00, 523.25, 440.00, 349.23]; // C Synth Chords
+            let idx = 0;
+            
+            bgmInterval = setInterval(() => {
+                if (!bgmPlaying) return;
+                playTone(notes[idx % notes.length], 0.6);
+                idx++;
+            }, 750);
+        }
+
+        function stopAmbientMusic() {
+            if (bgmInterval) {
+                clearInterval(bgmInterval);
+                bgmInterval = null;
+            }
+        }
+
+        function toggleAudio() {
+            soundEnabled = !soundEnabled;
+            const text = document.getElementById('sound-text');
+            const icon = document.getElementById('sound-icon');
+            if (text) text.innerText = soundEnabled ? 'SFX ON' : 'SFX Muted';
+            if (icon) icon.className = soundEnabled ? 'fa-solid fa-volume-high text-indigo-400' : 'fa-solid fa-volume-xmark text-gray-500';
+        }
+
+        function resetMatrix() {
+            colorWeights = { red: 10, green: 10, blue: 10, yellow: 10, orange: 10, purple: 10 };
+            document.getElementById('image-preview').classList.add('hidden');
+            document.getElementById('upload-placeholder').classList.remove('hidden');
+            document.getElementById('scan-status').classList.add('hidden');
+            updateUI();
+        }
+
+        function updateUI() {
+            let total = 0;
+            for (const c in colorWeights) total += colorWeights[c];
+
+            const stats = ALL_COLORS.map(c => ({
+                color: c,
+                name: COLOR_NAMES_EN[c],
+                percent: (colorWeights[c] / total) * 100
+            })).sort((a, b) => b.percent - a.percent);
+
+            const top = stats[0];
+
+            document.getElementById('top-color-name').innerText = top.name;
+            document.getElementById('top-color-percent').innerText = `${top.percent.toFixed(1)}%`;
+            document.getElementById('top-color-cube').className = `w-20 h-20 rounded-2xl bg-dice-${top.color} flex items-center justify-center text-white text-3xl font-black shadow-2xl`;
+
+            const container = document.getElementById('leaderboard-container');
+            if (container) {
+                container.innerHTML = stats.map(item => `
+                    <div class="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-gray-900/50 border border-gray-800">
+                        <div class="flex items-center gap-3 w-36">
+                            <div class="w-6 h-6 rounded-lg bg-dice-${item.color} flex-shrink-0 shadow"></div>
+                            <span class="text-xs font-bold text-gray-200 capitalize">${item.name}</span>
+                        </div>
+                        <div class="flex-1 bg-gray-800 h-2.5 rounded-full overflow-hidden">
+                            <div class="h-full bg-dice-${item.color} transition-all duration-500" style="width: ${item.percent}%"></div>
+                        </div>
+                        <span class="text-xs font-extrabold text-gray-300 w-14 text-right">${item.percent.toFixed(1)}%</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function processImageScan(img) {
+            if (isScanning) return;
+            isScanning = true;
+
+            const statusBox = document.getElementById('scan-status');
+            const statusText = document.getElementById('scan-status-text');
+            const percentText = document.getElementById('scan-percent-text');
+            const progressBar = document.getElementById('scan-progress-bar');
+
+            statusBox.classList.remove('hidden');
+            let progress = 0;
+            progressBar.style.width = '0%';
+
+            // 7 Second Scanner Loop
+            const interval = setInterval(() => {
+                progress += 2;
+                if (progress > 100) progress = 100;
+                
+                progressBar.style.width = `${progress}%`;
+                percentText.innerText = `${progress}%`;
+                statusText.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Analyzing Dice (${Math.ceil((100 - progress) * 0.07)}s)...`;
+
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    finishScan(img);
+                }
+            }, 140); // 140ms * 50 = 7000ms (7 seconds)
+        }
+
+        function finishScan(img) {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width || 400;
+                canvas.height = img.height || 400;
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                // Reset base weights for clean screenshot calculation
+                colorWeights = { red: 5, green: 5, blue: 5, yellow: 5, orange: 5, purple: 5 };
+                const sampled = { red: 0, green: 0, blue: 0, yellow: 0, orange: 0, purple: 0 };
+                
+                for (let i = 0; i < 50; i++) {
+                    const rx = Math.floor(Math.random() * (canvas.width * 0.6)) + Math.floor(canvas.width * 0.2);
+                    const ry = Math.floor(Math.random() * (canvas.height * 0.6)) + Math.floor(canvas.height * 0.2);
+                    const pixel = ctx.getImageData(rx, ry, 1, 1).data;
+                    
+                    const matched = matchColor(pixel[0], pixel[1], pixel[2]);
+                    if (matched) sampled[matched] += 3;
+                }
+
+                for (const c in sampled) {
+                    colorWeights[c] += sampled[c];
+                }
+
+                document.getElementById('scan-status-text').innerHTML = `<i class="fa-solid fa-check text-emerald-400"></i> Scan Complete!`;
+                playTone(880, 0.3);
+            } catch (e) {
+                console.error(e);
+            }
+
+            isScanning = false;
+            updateUI();
+        }
+
+        function matchColor(r, g, b) {
+            const hsv = rgbToHsv(r, g, b);
+            if (hsv.s < 0.25 || hsv.v < 0.25) return null; // Filter grey background
+
+            const h = hsv.h * 360;
+            if (h >= 345 || h < 15) return 'red';
+            if (h >= 15 && h < 42) return 'orange';
+            if (h >= 42 && h < 70) return 'yellow';
+            if (h >= 70 && h < 165) return 'green';
+            if (h >= 165 && h < 260) return 'blue';
+            if (h >= 260 && h < 345) return 'purple';
+            return null;
+        }
+
+        function rgbToHsv(r, g, b) {
+            r /= 255; g /= 255; b /= 255;
+            const max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, v = max;
+            const d = max - min;
+            s = max === 0 ? 0 : d / max;
+            if (max === min) {
+                h = 0;
+            } else {
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+            return { h, s, v };
+        }
+
+        function handleFileSelect(evt) {
+            const file = evt.target.files[0];
+            if (file) loadImageFile(file);
+        }
+
+        function loadImageFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    document.getElementById('image-preview').src = e.target.result;
+                    document.getElementById('image-preview').classList.remove('hidden');
+                    document.getElementById('upload-placeholder').classList.add('hidden');
+                    processImageScan(img);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        window.addEventListener('paste', (e) => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (const item of items) {
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
+                    loadImageFile(item.getAsFile());
+                    break;
+                }
+            }
+        });
+
+        function initBackgroundCanvas() {
+            const canvas = document.getElementById('live-bg-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            let width = canvas.width = window.innerWidth;
+            let height = canvas.height = window.innerHeight;
+
+            const mouse = { x: width / 2, y: height / 2, lastX: width / 2, lastY: height / 2, speed: 0 };
+            const smokeParticles = [];
+            const ambientParticles = [];
+
+            window.addEventListener('resize', () => {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                const dx = e.clientX - mouse.x;
+                const dy = e.clientY - mouse.y;
+                mouse.speed = Math.sqrt(dx * dx + dy * dy);
+                mouse.lastX = mouse.x;
+                mouse.lastY = mouse.y;
+                mouse.x = e.clientX;
+                mouse.y = e.clientY;
+
+                // Spawn smoke cloud particles along the mouse trail
+                const spawnCount = Math.min(Math.floor(mouse.speed * 0.4) + 2, 8);
+                for (let i = 0; i < spawnCount; i++) {
+                    smokeParticles.push(createSmokeParticle(mouse.x, mouse.y, dx, dy));
+                }
+            });
+
+            // Ambient background stars/floating specs
+            for (let i = 0; i < 45; i++) {
+                ambientParticles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    radius: Math.random() * 1.5 + 0.5,
+                    vx: (Math.random() - 0.5) * 0.3,
+                    vy: (Math.random() - 0.5) * 0.3,
+                    alpha: Math.random() * 0.4 + 0.1
+                });
+            }
+
+            function createSmokeParticle(x, y, dx, dy) {
+                const colors = [
+                    'rgba(168, 85, 247, ', // Purple smoke
+                    'rgba(99, 102, 241, ',  // Indigo smoke
+                    'rgba(236, 72, 153, ',  // Pink smoke
+                    'rgba(59, 130, 246, '   // Blue smoke
+                ];
+                const baseColor = colors[Math.floor(Math.random() * colors.length)];
+                
+                // Add natural randomness to drift
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 1.5 + 0.3;
+
+                return {
+                    x: x + (Math.random() - 0.5) * 10,
+                    y: y + (Math.random() - 0.5) * 10,
+                    size: Math.random() * 20 + 15,
+                    maxSize: Math.random() * 90 + 60,
+                    vx: (dx * 0.03) + Math.cos(angle) * speed,
+                    vy: (dy * 0.03) + Math.sin(angle) * speed - 0.2, // Subtle upward float
+                    alpha: Math.random() * 0.45 + 0.4,
+                    color: baseColor,
+                    spin: (Math.random() - 0.5) * 0.02,
+                    rotation: Math.random() * Math.PI * 2
+                };
+            }
+
+            function animate() {
+                // Fade trail effect for fluid smoke blending
+                ctx.fillStyle = 'rgba(11, 15, 23, 0.28)';
+                ctx.fillRect(0, 0, width, height);
+
+                // Render background floating ambient dots
+                ambientParticles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    if (p.x < 0) p.x = width;
+                    if (p.x > width) p.x = 0;
+                    if (p.y < 0) p.y = height;
+                    if (p.y > height) p.y = 0;
+
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha})`;
+                    ctx.fill();
+                });
+
+                // Update & draw smoke dispersion cloud
+                for (let i = smokeParticles.length - 1; i >= 0; i--) {
+                    const s = smokeParticles[i];
+
+                    s.x += s.vx;
+                    s.y += s.vy;
+                    s.size += (s.maxSize - s.size) * 0.015; // Slower, wider expansion
+                    s.alpha -= 0.003; // Ultra-slow dissipation so smoke lingers much longer!
+                    s.rotation += s.spin;
+                    s.vx *= 0.98; // Smooth motion friction
+                    s.vy *= 0.98;
+
+                    if (s.alpha <= 0) {
+                        smokeParticles.splice(i, 1);
+                        continue;
+                    }
+
+                    // Render volumetric glowing smoke puff
+                    ctx.save();
+                    ctx.translate(s.x, s.y);
+                    ctx.rotate(s.rotation);
+
+                    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, s.size);
+                    gradient.addColorStop(0, `${s.color}${s.alpha})`);
+                    gradient.addColorStop(0.5, `${s.color}${s.alpha * 0.5})`);
+                    gradient.addColorStop(1, `${s.color}0)`);
+
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, s.size, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                }
+
+                requestAnimationFrame(animate);
+            }
+
+            animate();
+        }
+
+        window.onload = function() {
+            initBackgroundCanvas();
+            updateUI();
+        };
+    </script>
+</body>
+</html>
